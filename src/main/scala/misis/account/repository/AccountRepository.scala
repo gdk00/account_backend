@@ -10,5 +10,6 @@ trait AccountRepository {
     def get(id: UUID): Future[Account]
     def create(item: CreateAccount): Future[Account]
     def changeBalance(item: ChangeBalance, isPositive: Boolean): Future[Either[String, Account]]
+    def transfer(createTransaction: CreateTransaction): Future[Either[String, Seq[Account]]]
     def delete(id: UUID): Future[Unit]
 }

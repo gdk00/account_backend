@@ -1,7 +1,9 @@
 package misis.account.repository
 
+import akka.actor.Status.Success
+import akka.http.scaladsl.server.Directives.onSuccess
 import misis.account.db.AccountDb._
-import misis.account.model.{CreateAccount, ChangeBalance, Account}
+import misis.account.model.{Account, ChangeBalance, CreateAccount, CreateTransaction}
 import slick.jdbc.PostgresProfile.api._
 
 import java.util.UUID
@@ -60,6 +62,18 @@ class AccountRepositoryDb(implicit val ec: ExecutionContext, db: Database) exten
             updated <- future
             res <- find(item.account_id)
         } yield updated.map(_ => res.get)
+    }
+
+    def transfer(createAccount: CreateTransaction):  Future[Either[String, Seq[Account]]] = {
+        changeBalance(ChangeBalance(createAccount.accountId1, createAccount.value), isPositive = false).flatMap {
+            case Right(acc1) => changeBalance(ChangeBalance(createAccount.accountId2, createAccount.value), isPositive = true).flatMap {
+                case Right(acc2) => Future.successful(Right(Seq(acc1, acc2)))
+                case Left(s) =>
+                    changeBalance(ChangeBalance(createAccount.accountId1, createAccount.value), isPositive = true)
+                    Future.successful(Left(s))
+            }
+            case Left(s) => Future.successful(Left(s))
+        }
     }
 
     override def delete(id: UUID): Future[Unit] = {

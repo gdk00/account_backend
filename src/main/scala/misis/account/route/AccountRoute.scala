@@ -6,6 +6,7 @@ import de.heikoseeberger.akkahttpcirce.FailFastCirceSupport
 import io.circe.generic.auto._
 import misis.account.model.{CreateAccount, ChangeBalance}
 import misis.account.repository.AccountRepository
+import misis.account.model.CreateTransaction
 
 import scala.concurrent.ExecutionContext
 
@@ -36,6 +37,14 @@ class AccountRoute(repository: AccountRepository)(implicit ec: ExecutionContext)
           path("account" / "decrease") {
             (put & entity(as[ChangeBalance])) { changeBalance =>
               onSuccess(repository.changeBalance(changeBalance, isPositive = false)) {
+                case Right(value) => complete(value)
+                case Left(s) => complete(StatusCodes.NotAcceptable, s)
+              }
+            }
+          } ~
+          path("transaction") {
+            (put & entity(as[CreateTransaction])) { createTransaction =>
+              onSuccess(repository.transfer(createTransaction)) {
                 case Right(value) => complete(value)
                 case Left(s) => complete(StatusCodes.NotAcceptable, s)
               }

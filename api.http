@@ -1,0 +1,33 @@
+###
+GET http://localhost:8080/accounts
+
+###
+POST http://localhost:8080/account
+Content-Type: application/json
+
+{}
+
+###
+GET http://localhost:8080/account/3f2cec1b-f7ff-4065-bc3e-2955ac703a0d
+
+###
+PUT http://localhost:8080/account/increase
+Content-Type: application/json
+
+{
+  "account_id": "3f2cec1b-f7ff-4065-bc3e-2955ac703a0d",
+  "value": "900"
+}
+
+###
+PUT http://localhost:8080/account/decrease
+Content-Type: application/json
+
+{
+  "account_id": "3f2cec1b-f7ff-4065-bc3e-2955ac703a0d",
+  "value": "899"
+}
+
+###
+DELETE http://localhost:8080/account/bca35091-4a36-4485-afc8-aaeea214a5ff
+

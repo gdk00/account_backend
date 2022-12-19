@@ -1,0 +1,22 @@
+version: '3.1'
+
+services:
+  db:
+    image: postgres:9.6
+    container_name: postgres-misis
+    environment:
+      POSTGRES_PASSWORD: 1111
+    ports:
+      - 5434:5432
+
+  fun-cart:
+    image: misis-account
+    container_name: misis-account
+    build:
+      dockerfile: ./docker/Dockerfile
+      context: ..
+    environment:
+      PGHOST: postgres
+      PGPORT: 5432
+    ports:
+      - 8080:8080

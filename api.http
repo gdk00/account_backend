@@ -1,14 +1,30 @@
 ###
 GET http://localhost:8080/accounts
+###
+GET http://localhost:8080/categories
 
 ###
 POST http://localhost:8080/account
 Content-Type: application/json
 
 {}
+###
+POST http://localhost:8080/category
+Content-Type: application/json
+
+{"name": "games", "cashback":  5}
 
 ###
-GET http://localhost:8080/account/3f2cec1b-f7ff-4065-bc3e-2955ac703a0d
+###
+PUT http://localhost:8080/category/update_cashback
+Content-Type: application/json
+
+{"category_id": "36def573-3dd0-4292-9a08-8b2c543a9292", "value": 15}
+
+###
+GET http://localhost:8080/account/4a5e30dc-a1a8-4291-8a32-302b646f5669"
+###
+GET http://localhost:8080/category/36def573-3dd0-4292-9a08-8b2c543a9292
 
 ###
 PUT http://localhost:8080/account/increase
@@ -23,9 +39,10 @@ PUT http://localhost:8080/transaction
 Content-Type: application/json
 
 {
-  "accountId2": "3f2cec1b-f7ff-4065-bc3e-2955ac703a0d",
-  "accountId1": "34f79134-b858-4410-9d84-a7b53c1be5ba",
-  "value": "900"
+  "accountId2": "4a5e30dc-a1a8-4291-8a32-302b646f5669",
+  "accountId1": "3f2cec1b-f7ff-4065-bc3e-2955ac703a0d",
+  "categoryId": "36def573-3dd0-4292-9a08-8b2c543a9292",
+  "value": "500"
 }
 
 ###
@@ -33,7 +50,7 @@ PUT http://localhost:8080/account/decrease
 Content-Type: application/json
 
 {
-  "account_id": "3f2cec1b-f7ff-4065-bc3e-2955ac703a0d",
+  "account_id": "4a5e30dc-a1a8-4291-8a32-302b646f5669",
   "value": "899"
 }
 

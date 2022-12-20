@@ -5,12 +5,12 @@ import akka.http.scaladsl.server.Directives._
 import de.heikoseeberger.akkahttpcirce.FailFastCirceSupport
 import io.circe.generic.auto._
 import misis.account.model.{CreateAccount, ChangeBalance}
-import misis.account.repository.AccountRepository
+import misis.account.repository.{AccountRepository, CategoryRepository}
 import misis.account.model.CreateTransaction
 
 import scala.concurrent.ExecutionContext
 
-class AccountRoute(repository: AccountRepository)(implicit ec: ExecutionContext) extends FailFastCirceSupport {
+class AccountRoute(repository: AccountRepository, category_repository: CategoryRepository)(implicit ec: ExecutionContext) extends FailFastCirceSupport {
     def route =
         (path("accounts") & get) {
             val list = repository.list()
@@ -44,7 +44,7 @@ class AccountRoute(repository: AccountRepository)(implicit ec: ExecutionContext)
           } ~
           path("transaction") {
             (put & entity(as[CreateTransaction])) { createTransaction =>
-              onSuccess(repository.transfer(createTransaction)) {
+              onSuccess(repository.transfer(createTransaction, category_repository)) {
                 case Right(value) => complete(value)
                 case Left(s) => complete(StatusCodes.NotAcceptable, s)
               }

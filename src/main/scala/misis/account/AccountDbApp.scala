@@ -15,9 +15,11 @@ object AccountDbApp extends App {
 
     new InitDb().prepare()
     val accounts = new AccountRepositoryDb()
-    
-    val helloRoute = new HelloRoute().route
-    val accountRoute = new AccountRoute(accounts).route
+    val categories = new CategoryRepositoryDb()
 
-    Http().newServerAt("0.0.0.0", 8080).bind(helloRoute ~ accountRoute)
+    val categoryRoute = new CategoryRoute(categories).route
+    val helloRoute = new HelloRoute().route
+    val accountRoute = new AccountRoute(accounts, categories).route
+
+    Http().newServerAt("0.0.0.0", 8080).bind(helloRoute ~ accountRoute ~ categoryRoute)
 }

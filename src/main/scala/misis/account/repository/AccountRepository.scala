@@ -1,5 +1,6 @@
 package misis.account.repository
 
+import misis.account.db.AccountDb.categoryTable
 import misis.account.model._
 
 import java.util.UUID
@@ -10,6 +11,7 @@ trait AccountRepository {
     def get(id: UUID): Future[Account]
     def create(item: CreateAccount): Future[Account]
     def changeBalance(item: ChangeBalance, isPositive: Boolean): Future[Either[String, Account]]
-    def transfer(createTransaction: CreateTransaction): Future[Either[String, Seq[Account]]]
+    def transfer(createTransaction: CreateTransaction, category_repository: CategoryRepository): Future[Either[String, Seq[Account]]]
     def delete(id: UUID): Future[Unit]
+    def get_category(id: UUID): Future[Category]
 }

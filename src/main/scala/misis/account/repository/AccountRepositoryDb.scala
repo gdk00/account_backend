@@ -1,9 +1,7 @@
 package misis.account.repository
 
-import akka.actor.Status.Success
-import akka.http.scaladsl.server.Directives.onSuccess
 import misis.account.db.AccountDb._
-import misis.account.model.{Account, ChangeBalance, CreateAccount, CreateTransaction}
+import misis.account.model.{Account, ChangeBalance, CreateAccount, CreateTransaction, Category}
 import slick.jdbc.PostgresProfile.api._
 
 import java.util.UUID
@@ -64,16 +62,28 @@ class AccountRepositoryDb(implicit val ec: ExecutionContext, db: Database) exten
         } yield updated.map(_ => res.get)
     }
 
-    def transfer(createAccount: CreateTransaction):  Future[Either[String, Seq[Account]]] = {
+    def transfer(createAccount: CreateTransaction, category_repository: CategoryRepository):  Future[Either[String, Seq[Account]]] = {
         changeBalance(ChangeBalance(createAccount.accountId1, createAccount.value), isPositive = false).flatMap {
             case Right(acc1) => changeBalance(ChangeBalance(createAccount.accountId2, createAccount.value), isPositive = true).flatMap {
-                case Right(acc2) => Future.successful(Right(Seq(acc1, acc2)))
+                case Right(acc2) =>
+                    category_repository.find(createAccount.categoryId).flatMap { category => {
+                        if (category.get != null)
+                        changeBalance(ChangeBalance(
+                            createAccount.accountId1, category.get.cashback * createAccount.value / 100),
+                            isPositive = true)
+                    }
+                        Future.successful(Right(Seq(acc1, acc2)))
+                    }
                 case Left(s) =>
                     changeBalance(ChangeBalance(createAccount.accountId1, createAccount.value), isPositive = true)
                     Future.successful(Left(s))
             }
             case Left(s) => Future.successful(Left(s))
         }
+    }
+
+    override def get_category(id: UUID): Future[Category] = {
+        db.run(categoryTable.filter(i => i.id === id).result.head)
     }
 
     override def delete(id: UUID): Future[Unit] = {

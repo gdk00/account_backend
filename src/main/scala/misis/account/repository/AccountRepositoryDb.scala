@@ -1,13 +1,22 @@
 package misis.account.repository
 
 import misis.account.db.AccountDb._
-import misis.account.model.{Account, ChangeBalance, CreateAccount, CreateTransaction, Category}
+import misis.account.model.{
+    Account,
+    Category,
+    ChangeBalance,
+    CreateAccount,
+    CreateTransaction,
+    ExternalTransferRequest,
+    ExternalTransferResponse
+}
 import slick.jdbc.PostgresProfile.api._
 
 import java.util.UUID
 import scala.concurrent.{ExecutionContext, Future}
 
-class AccountRepositoryDb(implicit val ec: ExecutionContext, db: Database) extends AccountRepository {
+class AccountRepositoryDb(client: ExternalTransferClient)(implicit val ec: ExecutionContext, db: Database)
+    extends AccountRepository {
     override def list(): Future[Seq[Account]] = {
         db.run(accountTable.result)
     }
@@ -35,25 +44,29 @@ class AccountRepositoryDb(implicit val ec: ExecutionContext, db: Database) exten
 
         val ops = Map(
             true -> ((x: Int, y: Int) => x + y),
-            false -> ((x: Int, y: Int) => x - y),
+            false -> ((x: Int, y: Int) => x - y)
         )
 
         for {
             oldBalanceOpt <- db.run(query.result.headOption)
             balanceDifference = item.value
 
-            updateBalance = oldBalanceOpt.map { oldBalance =>
-              val newBalance = ops(isPositive)(oldBalance, balanceDifference)
-                if (balanceDifference < 0)
-                    Left("Нельзя пополнять / снимать отрицательное число")
-                else if (newBalance < 0)
-                    Left("Недостаточно денег на счете")
-                else Right(newBalance)
-            }.getOrElse(Left("Не найден счет"))
+            updateBalance = oldBalanceOpt
+                .map { oldBalance =>
+                    val newBalance = ops(isPositive)(oldBalance, balanceDifference)
+                    if (balanceDifference < 0)
+                        Left("Нельзя пополнять / снимать отрицательное число")
+                    else if (newBalance < 0)
+                        Left("Недостаточно денег на счете")
+                    else Right(newBalance)
+                }
+                .getOrElse(Left("Не найден счет"))
 
-            future = updateBalance.map(balance => db.run {
-                query.update(balance)
-            }) match {
+            future = updateBalance.map(balance =>
+                db.run {
+                    query.update(balance)
+                }
+            ) match {
                 case Right(future) => future.map(Right(_))
                 case Left(s) => Future.successful(Left(s))
             }
@@ -62,22 +75,33 @@ class AccountRepositoryDb(implicit val ec: ExecutionContext, db: Database) exten
         } yield updated.map(_ => res.get)
     }
 
-    def transfer(createAccount: CreateTransaction, category_repository: CategoryRepository):  Future[Either[String, Seq[Account]]] = {
+    def transfer(
+        createAccount: CreateTransaction,
+        category_repository: CategoryRepository
+    ): Future[Either[String, Seq[Account]]] = {
         changeBalance(ChangeBalance(createAccount.accountId1, createAccount.value), isPositive = false).flatMap {
-            case Right(acc1) => changeBalance(ChangeBalance(createAccount.accountId2, createAccount.value), isPositive = true).flatMap {
-                case Right(acc2) =>
-                    category_repository.find(createAccount.categoryId).flatMap { category => {
-                        if (category.get != null)
-                        changeBalance(ChangeBalance(
-                            createAccount.accountId1, category.get.cashback * createAccount.value / 100),
-                            isPositive = true)
-                    }
-                        Future.successful(Right(Seq(acc1, acc2)))
-                    }
-                case Left(s) =>
-                    changeBalance(ChangeBalance(createAccount.accountId1, createAccount.value), isPositive = true)
-                    Future.successful(Left(s))
-            }
+            case Right(acc1) =>
+                changeBalance(ChangeBalance(createAccount.accountId2, createAccount.value), isPositive = true).flatMap {
+                    case Right(acc2) =>
+                        category_repository.find(createAccount.categoryId).flatMap { category =>
+                            {
+                                if (category.get != null)
+                                    changeBalance(
+                                        ChangeBalance(
+                                            createAccount.accountId1,
+                                            category.get.cashback * createAccount.value / 100
+                                        ),
+                                        isPositive = true
+                                    )
+                                else
+                                    Future.successful(Left("Cannot find category"))
+                            }
+                            Future.successful(Right(Seq(acc1, acc2)))
+                        }
+                    case Left(s) =>
+                        changeBalance(ChangeBalance(createAccount.accountId1, createAccount.value), isPositive = true)
+                        Future.successful(Left(s))
+                }
             case Left(s) => Future.successful(Left(s))
         }
     }
@@ -88,5 +112,38 @@ class AccountRepositoryDb(implicit val ec: ExecutionContext, db: Database) exten
 
     override def delete(id: UUID): Future[Unit] = {
         db.run(accountTable.filter(_.id === id).delete).map(_ => ())
+    }
+
+    override def external_transfer(item: ExternalTransferRequest): Future[Either[String, ExternalTransferResponse]] = {
+        val external_accounts = client.getAccounts
+        external_accounts.flatMap {
+            case Left(s) => Future.successful(Left(s))
+            case Right(accounts) =>
+                if (accounts.exists(_.id == item.src_account_id)) {
+                    client
+                        .external_increase(ChangeBalance(item.dst_account_id, item.value))
+                        .flatMap(status =>
+                            if (status.isSuccess()) {
+                                changeBalance(ChangeBalance(item.src_account_id, item.value), isPositive = false)
+                                    .flatMap {
+                                        case Right(acc) =>
+                                            Future.successful(
+                                                Right(
+                                                    ExternalTransferResponse(
+                                                        item.src_account_id,
+                                                        item.dst_account_id,
+                                                        acc.balance
+                                                    )
+                                                )
+                                            )
+                                        case Left(s) => Future.successful(Left(s))
+                                    }
+                            } else
+                                Future.successful(Left("Cannot check account existence"))
+                        )
+
+                } else
+                    Future.successful(Left("No such account"))
+        }
     }
 }

@@ -22,7 +22,7 @@ Content-Type: application/json
 {"category_id": "36def573-3dd0-4292-9a08-8b2c543a9292", "value": 15}
 
 ###
-GET http://localhost:8080/account/4a5e30dc-a1a8-4291-8a32-302b646f5669"
+GET http://localhost:8080/account/4a5e30dc-a1a8-4291-8a32-302b646f5669
 ###
 GET http://localhost:8080/category/36def573-3dd0-4292-9a08-8b2c543a9292
 
@@ -31,7 +31,7 @@ PUT http://localhost:8080/account/increase
 Content-Type: application/json
 
 {
-  "account_id": "3f2cec1b-f7ff-4065-bc3e-2955ac703a0d",
+  "account_id": "ceb94cf9-9cde-4b22-bc03-193d2969336d",
   "value": "900"
 }
 ###
@@ -57,3 +57,13 @@ Content-Type: application/json
 ###
 DELETE http://localhost:8080/account/bca35091-4a36-4485-afc8-aaeea214a5ff
 
+
+###
+PUT http://localhost:8080/account/external_transfer
+Content-Type: application/json
+
+{
+  "src_account_id": "ceb94cf9-9cde-4b22-bc03-193d2969336d",
+  "dst_account_id": "42644b6e-7b7f-4577-8bc3-89b5cdfb9d2f",
+  "value": 100
+}

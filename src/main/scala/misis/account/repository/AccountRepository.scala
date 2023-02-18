@@ -14,4 +14,5 @@ trait AccountRepository {
     def transfer(createTransaction: CreateTransaction, category_repository: CategoryRepository): Future[Either[String, Seq[Account]]]
     def delete(id: UUID): Future[Unit]
     def get_category(id: UUID): Future[Category]
+    def external_transfer(item: ExternalTransferRequest): Future[Either[String, ExternalTransferResponse]]
 }

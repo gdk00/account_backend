@@ -21,4 +21,4 @@ WORKDIR /app
 COPY --from=builder /build/account/target/universal/stage/bin bin
 COPY --from=builder /build/account/target/universal/stage/lib lib
 
-ENTRYPOINT sleep 2 && bin/account-db-app
+ENTRYPOINT sleep 2 && /bin/account-db-app

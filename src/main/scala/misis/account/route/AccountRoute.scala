@@ -6,11 +6,13 @@ import de.heikoseeberger.akkahttpcirce.FailFastCirceSupport
 import io.circe.generic.auto._
 import misis.account.model.{CreateAccount, ChangeBalance}
 import misis.account.repository.{AccountRepository, CategoryRepository}
-import misis.account.model.CreateTransaction
+import misis.account.model.{CreateTransaction, ExternalTransferRequest}
 
 import scala.concurrent.ExecutionContext
 
-class AccountRoute(repository: AccountRepository, category_repository: CategoryRepository)(implicit ec: ExecutionContext) extends FailFastCirceSupport {
+class AccountRoute(repository: AccountRepository, category_repository: CategoryRepository)(implicit
+    ec: ExecutionContext
+) extends FailFastCirceSupport {
     def route =
         (path("accounts") & get) {
             val list = repository.list()
@@ -26,33 +28,41 @@ class AccountRoute(repository: AccountRepository, category_repository: CategoryR
                     complete(repository.get(id))
                 }
             } ~
-          path("account" / "increase") {
-            (put & entity(as[ChangeBalance])) { changeBalance =>
-              onSuccess(repository.changeBalance(changeBalance, isPositive = true)) {
-                case Right(value) => complete(value)
-                case Left(s) => complete(StatusCodes.NotAcceptable, s)
-              }
-            }
-          } ~
-          path("account" / "decrease") {
-            (put & entity(as[ChangeBalance])) { changeBalance =>
-              onSuccess(repository.changeBalance(changeBalance, isPositive = false)) {
-                case Right(value) => complete(value)
-                case Left(s) => complete(StatusCodes.NotAcceptable, s)
-              }
-            }
-          } ~
-          path("transaction") {
-            (put & entity(as[CreateTransaction])) { createTransaction =>
-              onSuccess(repository.transfer(createTransaction, category_repository)) {
-                case Right(value) => complete(value)
-                case Left(s) => complete(StatusCodes.NotAcceptable, s)
-              }
-            }
-          } ~
+            path("account" / "increase") {
+                (put & entity(as[ChangeBalance])) { changeBalance =>
+                    onSuccess(repository.changeBalance(changeBalance, isPositive = true)) {
+                        case Right(value) => complete(value)
+                        case Left(s) => complete(StatusCodes.NotAcceptable, s)
+                    }
+                }
+            } ~
+            path("account" / "decrease") {
+                (put & entity(as[ChangeBalance])) { changeBalance =>
+                    onSuccess(repository.changeBalance(changeBalance, isPositive = false)) {
+                        case Right(value) => complete(value)
+                        case Left(s) => complete(StatusCodes.NotAcceptable, s)
+                    }
+                }
+            } ~
+            path("transaction") {
+                (put & entity(as[CreateTransaction])) { createTransaction =>
+                    onSuccess(repository.transfer(createTransaction, category_repository)) {
+                        case Right(value) => complete(value)
+                        case Left(s) => complete(StatusCodes.NotAcceptable, s)
+                    }
+                }
+            } ~
             path("account" / JavaUUID) { id =>
                 delete {
                     complete(repository.delete(id))
+                }
+            } ~
+            path("account" / "external_transfer") {
+                (put & entity(as[ExternalTransferRequest])) { externalTransferRequest =>
+                    onSuccess(repository.external_transfer(externalTransferRequest)) {
+                        case Right(ext_response) => complete(ext_response)
+                        case Left(s) => complete(StatusCodes.NotAcceptable, s)
+                    }
                 }
             }
 }
